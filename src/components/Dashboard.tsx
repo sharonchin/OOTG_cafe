@@ -13,24 +13,10 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Order from "@/components/Order";
+import useSession from "@/lib/useSession";
+import { Order as OrderType } from "@/lib/types";
+import STATUS from "@/constants/STATUS";
 
-function createData(
-  name: string,
-  calories: number,
-  fat: number,
-  carbs: number,
-  protein: number
-) {
-  return { name, calories, fat, carbs, protein };
-}
-
-const rows = [
-  createData("Frozen yoghurt", 159, 6.0, 24, 4.0),
-  createData("Ice cream sandwich", 237, 9.0, 37, 4.3),
-  createData("Eclair", 262, 16.0, 24, 6.0),
-  createData("Cupcake", 305, 3.7, 67, 4.3),
-  createData("Gingerbread", 356, 16.0, 49, 3.9),
-];
 export default function Dashboard() {
   const [online, setOnline] = React.useState(true);
 
@@ -42,17 +28,46 @@ export default function Dashboard() {
     setOnline(!online);
   };
 
+  const cafe = useSession();
+  const [orders, setOrders] = React.useState<OrderType[]>([] as OrderType[]);
+
+  const getOrder = async () => {
+    const res = await fetch(
+      `http://localhost:3000/api/orders?cafe=${cafe?.id}`,
+      {
+        cache: "no-store",
+      }
+    );
+    if (!res.ok) {
+      console.log(res);
+      throw new Error("Screwed up");
+    }
+    setOrders(await res.json());
+  };
+
+  React.useEffect(() => {
+    getOrder();
+  }, []);
+
+  const activeOrder = orders.filter(
+    (order) => order.status !== ("COMPLETED" as STATUS)
+  );
+
+  const completedOrder = orders.filter(
+    (order) => order.status === ("COMPLETED" as STATUS)
+  );
+
   return (
     <div>
       <span className="flex justify-center font-bold text-2xl ">
-        Welcome Back Elemental Cafe!
+        Welcome Back {cafe?.name}!
       </span>
       <div className="flex flew-row justify-between gap-20 pt-10">
         <Card sx={{ minWidth: 275 }}>
           <CardContent>
             <div className="flex flex-col items-center">
               <span className="text-xl font-bold">Active Order</span>
-              <span>12</span>
+              <span>{activeOrder.length}</span>
             </div>
           </CardContent>
         </Card>
@@ -60,7 +75,7 @@ export default function Dashboard() {
           <CardContent>
             <div className="flex flex-col items-center">
               <span className="text-xl font-bold">Completed Order</span>
-              <span>12</span>
+              <span>{completedOrder.length}</span>
             </div>
           </CardContent>
         </Card>

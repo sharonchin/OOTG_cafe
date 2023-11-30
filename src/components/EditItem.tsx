@@ -4,34 +4,72 @@ import { Button, Divider, Grid, Modal, TextField } from "@mui/material";
 import FormInput from "./FormInput";
 import AVAILABILITY from "@/constants/AVAILABILITY";
 import { useDropzone } from "react-dropzone";
-import { CreateProductInput } from "@/lib/validations/product.schema";
 import { FormProvider, useForm, SubmitHandler } from "react-hook-form";
 import { useEffect } from "react";
 import useSession from "@/lib/useSession";
 import useStore from "@/store";
 import { handleApiError } from "@/lib/helpers";
 import { useRouter } from "next/navigation";
-import { apiCreateProduct } from "@/lib/api-requests";
 import error from "next/error";
 import toast from "react-hot-toast";
 import PRODUCT_CATEGORY from "@/constants/PRODUCT_CATEGORY";
+import { apiUpdateProduct } from "@/lib/api-requests";
+import {
+  UpdateProductInput,
+  ProductUpdateSchema,
+} from "@/lib/validations/product.schema";
+import { Product } from "@/lib/types";
+import { zodResolver } from "@hookform/resolvers/zod";
 import Loading from "./Loading";
 
 const selectedStyle = {
   backgroundColor: "#778CCC",
 };
 
-const NewItem = () => {
+interface EditItemProps {
+  product: Product;
+}
+
+const EditItem = ({ product }: EditItemProps) => {
   const [file, setFile] = React.useState<File[] | undefined>(undefined);
   const [path, setPath] = React.useState<string>("");
   const store = useStore();
   const router = useRouter();
-  const methods = useForm<CreateProductInput>({
+  //   const [product, setProduct] = React.useState<Product>({} as Product);
+  const methods = useForm<UpdateProductInput>({
+    resolver: zodResolver(ProductUpdateSchema),
     defaultValues: {
-      img: "",
+      img: product?.img,
+      name: product?.name,
+      price: product?.price,
+      desc: product?.desc,
+      productCategory: product?.productCategory as PRODUCT_CATEGORY,
     },
   });
-  const cafe = useSession();
+
+  //   const getData = async () => {
+  //     const res = await fetch(`http://localhost:3000/api/product/${productId}`, {
+  //       cache: "no-store",
+  //     });
+  //     if (!res.ok) {
+  //       console.log(res);
+  //       throw new Error("Screwed up");
+  //     }
+  //     setProduct(await res.json());
+  //     // setValue("name", product?.name);
+  //     // setValue("price", product?.price);
+  //     // setValue("desc", product?.desc);
+  //     // setValue("productCategory", product?.productCategory as PRODUCT_CATEGORY);
+  //   };
+
+  React.useEffect(() => {
+    setValue("name", product?.name);
+    setValue("price", product?.price);
+    setValue("desc", product?.desc);
+    setValue("productCategory", product?.productCategory as PRODUCT_CATEGORY);
+    setValue("img", product?.img);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product]);
 
   const {
     register,
@@ -47,11 +85,6 @@ const NewItem = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSubmitSuccessful]);
-
-  useEffect(() => {
-    register("cafeId", { value: cafe?.id });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [register]);
 
   const ImageUpload = () => {
     const onDrop = React.useCallback((acceptedImages: File[]) => {
@@ -72,6 +105,12 @@ const NewItem = () => {
         <input {...getInputProps()} />
         {path ? (
           <img src={path} height={350} width={350} />
+        ) : product.img ? (
+          <img
+            src={`https://res.cloudinary.com/devlognxn/image/upload/v1699984254/${product.img}.jpg`}
+            height={350}
+            width={350}
+          />
         ) : (
           <div>
             {isDragActive ? (
@@ -85,57 +124,85 @@ const NewItem = () => {
     );
   };
 
-  async function NewItemFunction(credentials: CreateProductInput) {
+  async function EditItemFunction(credentials: UpdateProductInput) {
     if (!file) {
-      console.error("No image selected");
-      return;
-    }
-    const formData = new FormData();
+      if (!product?.img) {
+        console.error("No image selected");
+        return;
+      } else {
+        try {
+          store.setRequestLoading(true);
+          const img = await apiUpdateProduct(
+            JSON.stringify(credentials),
+            product?.id
+          );
+          if (img) {
+            toast.success("Product updated!");
+            return router.push("/management/item");
+          }
+        } catch (error: any) {
+          if (error instanceof Error) {
+            handleApiError(error);
+          } else {
+            toast.error(error.message);
 
-    formData.append("file", file[0]);
-
-    formData.append("upload_preset", "feriptks");
-
-    try {
-      store.setRequestLoading(true);
-
-      const response = await fetch(
-        "https://api.cloudinary.com/v1_1/devlognxn/image/upload",
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-      const data = await response.json();
-      const values = {
-        ...credentials,
-        img: data.public_id,
-      };
-      try {
-        const img = await apiCreateProduct(JSON.stringify(values));
-        if (img) {
-          toast.success("Image uploaded");
-          return router.push("/management/item");
-        }
-      } catch (error: any) {
-        if (error instanceof Error) {
-          handleApiError(error);
-        } else {
-          toast.error(error.message);
-
-          console.log("Error message:", error.message);
+            console.log("Error message:", error.message);
+          }
+        } finally {
+          store.setRequestLoading(false);
         }
       }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      store.setRequestLoading(false);
+    } else {
+      const formData = new FormData();
+
+      formData.append("file", file[0]);
+
+      formData.append("upload_preset", "feriptks");
+
+      try {
+        store.setRequestLoading(true);
+
+        const response = await fetch(
+          "https://api.cloudinary.com/v1_1/devlognxn/image/upload",
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+        const data = await response.json();
+        const values = {
+          ...credentials,
+          img: data.public_id,
+        };
+        try {
+          const img = await apiUpdateProduct(
+            JSON.stringify(values),
+            product?.id
+          );
+          if (img) {
+            toast.success("Image uploaded");
+            return router.push("/management/item");
+          }
+        } catch (error: any) {
+          if (error instanceof Error) {
+            handleApiError(error);
+          } else {
+            toast.error(error.message);
+
+            console.log("Error message:", error.message);
+          }
+        }
+      } catch (error) {
+        console.error(error);
+      } finally {
+        store.setRequestLoading(false);
+      }
     }
   }
 
-  const onSubmitHandler: SubmitHandler<CreateProductInput> = (values) => {
+  const onSubmitHandler: SubmitHandler<UpdateProductInput> = (values) => {
     console.log(values);
-    NewItemFunction(values);
+    EditItemFunction(values);
   };
 
   return (
@@ -184,7 +251,7 @@ const NewItem = () => {
                   </span>
                 )}
               </div>
-              <div className="flex flex-row justify-around pt-2 gap-3">
+              {/* <div className="flex flex-row justify-around pt-2 gap-3">
                 <label>
                   <div className="flex items-center gap-2 ">
                     <input type="radio" value={1 as AVAILABILITY} />
@@ -197,7 +264,7 @@ const NewItem = () => {
                     <h1>Unavailable</h1>
                   </div>
                 </label>
-              </div>
+              </div> */}
             </div>
           </div>
 
@@ -214,6 +281,9 @@ const NewItem = () => {
               variant="contained"
               style={selectedStyle}
               className=" bg-[#778ccc] text-white"
+              onClick={() => {
+                router.push("/management/item");
+              }}
             >
               Cancel
             </Button>
@@ -225,4 +295,4 @@ const NewItem = () => {
   );
 };
 
-export default NewItem;
+export default EditItem;

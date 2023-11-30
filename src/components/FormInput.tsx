@@ -5,12 +5,14 @@ type FormInputProps = {
   label: string;
   name: string;
   type?: string;
+  valueAsNumber?: boolean;
 };
 
 const FormInput: React.FC<FormInputProps> = ({
   label,
   name,
   type = "text",
+  valueAsNumber = false,
 }) => {
   const {
     register,
@@ -25,7 +27,7 @@ const FormInput: React.FC<FormInputProps> = ({
         type={type}
         placeholder=" "
         className="block w-full rounded-xl appearance-none focus:outline-none py-2 px-4 bg-[#F1F5F9]"
-        {...register(name)}
+        {...register(name, { valueAsNumber })}
       />
       {errors[name] && (
         <span className="text-red-500 text-xs pt-1 block">

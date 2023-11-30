@@ -1,3 +1,5 @@
+"use client";
+
 import * as React from "react";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -8,32 +10,42 @@ import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import ModeEditOutlineOutlinedIcon from "@mui/icons-material/ModeEditOutlineOutlined";
+import { Order } from "@/lib/types";
+import useSession from "@/lib/useSession";
+import { IconButton } from "@mui/material";
+import { useRouter } from "next/navigation";
+import moment from "moment";
 
-function createData(
-  id: string,
-  created: string,
-  orderType: string,
-  loc: string,
-  status: string
-) {
-  return { id, created, orderType, loc, status };
-}
+export default function OrderPage() {
+  const cafe = useSession();
+  const [orders, setOrders] = React.useState<Order[]>([] as Order[]);
+  const router = useRouter();
 
-const rows = [
-  createData("1", "2/11/2023", "Delivery", "KKE", "In progress"),
-  createData("2", "2/11/2023", "Pick up", "KKTM", "Completed"),
-  createData("3", "2/11/2023", "Delivery", "KKE", "Canceled"),
-];
+  const getOrder = async () => {
+    const res = await fetch(
+      `http://localhost:3000/api/orders?cafe=${cafe?.id}`,
+      {
+        cache: "no-store",
+      }
+    );
+    if (!res.ok) {
+      console.log(res);
+      throw new Error("Screwed up");
+    }
+    setOrders(await res.json());
+  };
 
-export default function Order() {
+  React.useEffect(() => {
+    getOrder();
+  }, []);
+
   return (
     <div className="px-5 w-full h-20 justify-center items-center ">
       <TableContainer component={Paper}>
         <Table sx={{ minWidth: 650 }} aria-label="simple table">
           <TableHead>
             <TableRow>
-              <TableCell align="center">Order ID</TableCell>
-              <TableCell align="center">Created</TableCell>
+              <TableCell align="center">Order Created</TableCell>
               <TableCell align="center">Order Type</TableCell>
               <TableCell align="center">Location</TableCell>
               <TableCell align="center">Status</TableCell>
@@ -41,21 +53,28 @@ export default function Order() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows.map((row) => (
+            {orders.map((row) => (
               <TableRow
                 key={row.id}
                 sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
               >
-                <TableCell align="center" component="th" scope="row">
-                  {row.id}
+                <TableCell align="center">
+                  {moment(row.createdAt).format("DD/MM/YYYY hh:mma")}
                 </TableCell>
-                <TableCell align="center">{row.created}</TableCell>
-                <TableCell align="center">{row.orderType}</TableCell>
-                <TableCell align="center">{row.loc}</TableCell>
+                <TableCell align="center">{row.deliveryOption}</TableCell>
+                <TableCell align="center">{row.cafe.loc.location}</TableCell>
                 <TableCell align="center">{row.status}</TableCell>
                 <TableCell align="center">
-                  <VisibilityOutlinedIcon />
-                  <ModeEditOutlineOutlinedIcon />
+                  <IconButton
+                    onClick={() => {
+                      router.push(`/order/${row.id}`);
+                    }}
+                  >
+                    <VisibilityOutlinedIcon />
+                  </IconButton>
+                  {/* <IconButton>
+                    <ModeEditOutlineOutlinedIcon />
+                  </IconButton> */}
                 </TableCell>
               </TableRow>
             ))}

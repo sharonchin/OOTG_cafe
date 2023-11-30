@@ -8,6 +8,8 @@ interface AuthenticatedRequest extends NextRequest {
   };
 }
 
+const allowedOrigins = ["http://localhost:3002", "http://localhost:3001"];
+
 let redirectToLogin = false;
 export async function middleware(req: NextRequest) {
   let token: string | undefined;
@@ -33,6 +35,24 @@ export async function middleware(req: NextRequest) {
   }
 
   const response = NextResponse.next();
+
+  const origin = req.nextUrl.origin;
+
+  console.log(`origin: ${origin}`);
+
+  if (allowedOrigins.includes(origin)) {
+    response.headers.append("Access-Control-Allow-Origin", origin);
+  }
+
+  response.headers.append("Access-Control-Allow-Credentials", "true");
+  response.headers.append(
+    "Access-Control-Allow-Methods",
+    "GET,DELETE,PATCH,POST,PUT"
+  );
+  response.headers.append(
+    "Access-Control-Allow-Headers",
+    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
+  );
 
   try {
     if (token) {

@@ -22,47 +22,20 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import LoopOutlinedIcon from "@mui/icons-material/LoopOutlined";
 import Availability from "./Availability";
 import Link from "next/link";
+import { Product } from "@/lib/types";
+import useSession from "@/lib/useSession";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 
 const selectedStyle = {
   backgroundColor: "#778CCC",
 };
 
-function createData(
-  id: string,
-  img: string,
-  name: string,
-  category: string,
-  desc: string,
-  price: number,
-  product_availability: number
-) {
-  return { id, name, img, category, desc, price, product_availability };
-}
-
-const rows = [
-  createData(
-    "1",
-    "laksa_j87qge",
-    "Laksa",
-    "Noodle",
-    "This is good Laksa",
-    6,
-    1
-  ),
-  createData(
-    "2",
-    "seazes6upiorcqduvoc6",
-    "Chicken Rice",
-    "Rice",
-    "This is good rice",
-    5,
-    2
-  ),
-];
-
 export default function ItemManagement() {
   const [open, setOpen] = React.useState(false);
   const [check, setCheck] = React.useState(true);
+  const [products, setProducts] = React.useState<Product[]>([] as Product[]);
+  const router = useRouter();
   const handleOpen = () => setOpen(true);
   const handleCheck = (
     event: React.SyntheticEvent<Element, Event>,
@@ -73,6 +46,99 @@ export default function ItemManagement() {
   const handleClose = () => {
     setOpen(false);
   };
+  const cafe = useSession();
+
+  const getData = async () => {
+    const res = await fetch(
+      `http://localhost:3000/api/product?cafe=${cafe?.id}`,
+      {
+        cache: "no-store",
+      }
+    );
+    if (!res.ok) {
+      console.log(res);
+      throw new Error("Screwed up");
+    }
+    setProducts(await res.json());
+  };
+
+  React.useEffect(() => {
+    getData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const deleteProduct = async (product: Product) => {
+    try {
+      const res = await fetch(
+        `http://localhost:3000/api/product/${product.id}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (res) {
+        toast.success("Item deleted.");
+        return getData(); //will refresh and get updated data
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+  const changeAvailability = async (product: Product) => {
+    if (product.availability) {
+      try {
+        const res = await fetch(
+          `http://localhost:3000/api/product/changeUnavailable/${product.id}`,
+          {
+            method: "PUT",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        if (res) {
+          toast.success("Item is unavailable now.");
+          return getData(); //will refresh and get updated data
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    } else {
+      try {
+        const res = await fetch(
+          `http://localhost:3000/api/product/changeAvailable/${product.id}`,
+          {
+            method: "PUT",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        if (res) {
+          toast.success("Item is available now.");
+          return getData(); //will refresh and get updated data
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+  };
+
+  function compare(a: any, b: any) {
+    if (a.name < b.name) {
+      return -1;
+    }
+    if (a.name > b.name) {
+      return 1;
+    }
+    return 0;
+  }
+
   return (
     <div className="flex flex-col justify-center gap-5">
       <div className="justify-center items-center ">
@@ -81,7 +147,6 @@ export default function ItemManagement() {
             <TableHead>
               <TableRow>
                 <TableCell align="center">Image</TableCell>
-                <TableCell align="center">Product ID</TableCell>
                 <TableCell align="center">Name</TableCell>
                 <TableCell align="center">Category</TableCell>
                 <TableCell align="center">Desc</TableCell>
@@ -91,7 +156,7 @@ export default function ItemManagement() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {rows.map((row) => (
+              {products.sort(compare).map((row) => (
                 <TableRow
                   key={row.id}
                   sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
@@ -104,29 +169,41 @@ export default function ItemManagement() {
                       height={100}
                     />
                   </TableCell>
-                  <TableCell align="center" component="th" scope="row">
+                  {/* <TableCell align="center" component="th" scope="row">
                     {row.id}
-                  </TableCell>
+                  </TableCell> */}
                   <TableCell align="center">{row.name}</TableCell>
-                  <TableCell align="center">{row.category}</TableCell>
+                  <TableCell align="center">{row.productCategory}</TableCell>
                   <TableCell align="center">{row.desc}</TableCell>
                   <TableCell align="center">{row.price}</TableCell>
                   <TableCell align="center">
-                    <Availability availability={row.product_availability} />
+                    <Availability availability={row.availability} />
                   </TableCell>
                   <TableCell align="center">
                     <Tooltip title="Edit">
-                      <IconButton>
+                      <IconButton
+                        onClick={() => {
+                          router.push(`/management/item/editItem/${row.id}`);
+                        }}
+                      >
                         <EditOutlinedIcon />
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Change Availability">
-                      <IconButton>
+                      <IconButton
+                        onClick={() => {
+                          changeAvailability(row);
+                        }}
+                      >
                         <LoopOutlinedIcon />
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Delete">
-                      <IconButton>
+                      <IconButton
+                        onClick={() => {
+                          deleteProduct(row);
+                        }}
+                      >
                         <DeleteOutlineOutlinedIcon />
                       </IconButton>
                     </Tooltip>

@@ -15,22 +15,8 @@ import SentimentSatisfiedIcon from "@mui/icons-material/SentimentSatisfied";
 import SentimentSatisfiedAltIcon from "@mui/icons-material/SentimentSatisfiedAlt";
 import SentimentVerySatisfiedIcon from "@mui/icons-material/SentimentVerySatisfied";
 import Link from "next/link";
-
-type OrderLine = {
-  id: number;
-  p1: string;
-  quantity: number;
-  price1: string;
-  loc: string;
-};
-
-export const Order: OrderLine = {
-  id: 1,
-  p1: "Laksa",
-  price1: "RM5",
-  quantity: 1,
-  loc: "KKE",
-};
+import { Order } from "@/lib/types";
+import toast from "react-hot-toast";
 
 const style = {
   position: "absolute" as "absolute",
@@ -45,15 +31,48 @@ const style = {
 };
 
 const selectedStyle = {
-    backgroundColor: "#778CCC"
-  }
+  backgroundColor: "#778CCC",
+};
 
-const OrderDetails = () => {
+const OrderDetails = ({ params }: { params: { id: string } }) => {
   const [open, setOpen] = React.useState(false);
   const handleOpen = () => setOpen(true);
   const handleClose = () => {
     setOpen(false);
   };
+  const [order, setOrder] = React.useState<Order>({} as Order);
+
+  const getData = async () => {
+    const res = await fetch(`http://localhost:3000/api/orders/${params.id}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      console.log(res);
+      throw new Error("Screwed up");
+    }
+    setOrder(await res.json());
+  };
+
+  const updateToPickUp = async () => {
+    const res = await fetch(
+      `http://localhost:3000/api/orders/updateToPickUp/${params.id}`,
+      {
+        method: "PUT",
+      }
+    );
+    if (!res.ok) {
+      console.log(res);
+      throw new Error("Screwed Up");
+    }
+
+    toast.success("Status Updated Successfully");
+    return getData();
+  };
+
+  React.useEffect(() => {
+    getData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <Box
@@ -62,7 +81,7 @@ const OrderDetails = () => {
         flexWrap: "wrap",
         pt: 10,
         justifyContent: "center",
-        alignContent:"center",
+        alignContent: "center",
         "& > :not(style)": {
           m: 1,
           pt: 10,
@@ -80,30 +99,34 @@ const OrderDetails = () => {
             sx={{ display: "flex", justifyContent: "center", width: "100%" }}
           >
             <Grid container>
-              <Grid
-                item
-                sx={{
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-                xs={6}
-              >
-                <h1>
-                  {Order.quantity} x {Order.p1}
-                </h1>
-              </Grid>
-              <Grid
-                item
-                sx={{
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-                xs={6}
-              >
-                <h1>{Order.price1}</h1>
-              </Grid>
+              {order?.products?.map((row) => (
+                <>
+                  <Grid
+                    item
+                    sx={{
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                    xs={6}
+                  >
+                    <h1>
+                      {row.quantity} x {row.name}
+                    </h1>
+                  </Grid>
+                  <Grid
+                    item
+                    sx={{
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                    xs={6}
+                  >
+                    <h1>{row.amount}</h1>
+                  </Grid>
+                </>
+              ))}
               <Grid
                 item
                 sx={{
@@ -124,7 +147,7 @@ const OrderDetails = () => {
                 }}
                 xs={6}
               >
-                <h1>{Order.price1}</h1>
+                <h1>{order?.totalPrice}</h1>
               </Grid>
               <Grid
                 item
@@ -190,7 +213,7 @@ const OrderDetails = () => {
                 }}
                 xs={6}
               >
-                <h1 className="text-xl font-bold">RM5</h1>
+                <h1 className="text-xl font-bold">RM{order?.totalPrice}</h1>
               </Grid>
               <Grid
                 item
@@ -202,7 +225,7 @@ const OrderDetails = () => {
                 }}
                 xs={12}
               >
-                <h1>Delivered to: {Order.loc}</h1>
+                <h1>Pick Up at: {order?.cafe?.name}</h1>
               </Grid>
               <Grid
                 item
@@ -214,12 +237,9 @@ const OrderDetails = () => {
                 }}
                 xs={12}
               >
-                <h1>Note from Student: extra chili pls</h1>
+                <h1>Note from Student: -</h1>
               </Grid>
-              <div>
-
-                
-              </div>
+              <div></div>
               <Grid
                 item
                 sx={{
@@ -232,7 +252,7 @@ const OrderDetails = () => {
               >
                 <CustomizedSwitches
                   label="Ready for pick up"
-                  handleOpen={handleOpen}
+                  handleOpen={updateToPickUp}
                 />
               </Grid>
               <Grid
@@ -246,18 +266,16 @@ const OrderDetails = () => {
                 xs={12}
               >
                 <Link target="_blank" href={`https://wa.me/${"60149750619"}`}>
-                <Button variant="contained" style={selectedStyle}>
-                  <WhatsAppIcon />
-                  <h1 className="pl-2">Chat with Student</h1>
-                </Button>
+                  <Button variant="contained" style={selectedStyle}>
+                    <WhatsAppIcon />
+                    <h1 className="pl-2">Chat with Student</h1>
+                  </Button>
                 </Link>
               </Grid>
             </Grid>
           </Box>
         </div>
       </Paper>
-
-      
     </Box>
   );
 };

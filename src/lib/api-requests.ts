@@ -103,3 +103,39 @@ export async function apiCreateProduct(credentials: string): Promise<Product> {
     (data) => data.data.product
   );
 }
+
+export async function apiUpdateProduct(
+  credentials: string,
+  productId: string
+): Promise<Product> {
+  const response = await fetch(`${SERVER_ENDPOINT}/api/product/${productId}`, {
+    method: "PUT",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: credentials,
+  });
+
+  return handleResponse<ProductResponse>(response).then(
+    (data) => data.data.product
+  );
+}
+
+// export async function apiDeleteProduct(
+//   productId: string
+// ): Promise<Product> {
+//   const response = await fetch(`${SERVER_ENDPOINT}/api/product/${productId}`, {
+//     method: "DELETE",
+//     credentials: "include",
+//     headers: {
+//       "Content-Type": "application/json",
+//     },
+//   });
+
+//   return handleResponse<ProductResponse>(response).then(
+//     (data) => data.data.product
+//   );
+// }
+
+
